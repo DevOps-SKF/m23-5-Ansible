@@ -1,0 +1,106 @@
+- hosts: all
+  become: yes
+  become_method: sudo
+  gather_facts: no
+
+  tasks:
+  - name: User
+    block: 
+    - name: Set timezone 
+      timezone:
+        name: Europe/Moscow
+
+    - name: Ensure the locale exists
+      locale_gen:
+        name: en_GB.UTF-8
+        state: present
+
+    - name: set time format to 24h
+      command: localectl set-locale LC_TIME="en_GB.UTF-8"
+    tags: setup
+
+
+  - name: User
+    block: 
+    - debug: msg="Creating {{ user }}"
+      when:
+        - '"debug" in ansible_run_tags'
+
+    - name: Add the user 
+      user:
+        name: "{{ user }}"
+        shell: /bin/bash
+        groups: users
+        append: yes   
+    
+    - name: Ansible create .ssh directory and set permissions    
+      file:
+        path: "/home/{{ user }}/.ssh"
+        state: directory      
+        mode: "u=rwx"
+
+    - name: Copy file
+      copy:
+        src: "~/.ssh/{{ user }}.pub"
+        dest: "/home/{{ user }}/.ssh/id_rsa.pub"
+        mode: 0600
+
+    - name: Ansible create .ssh directory and set permissions    
+      file:
+        path: "/home/{{ user }}/.ssh"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        recurse: yes
+
+    tags: user
+
+  
+  - name: Postfix init
+    block: 
+    - debug: msg="postfix init"
+      when:
+        - '"debug" in ansible_run_tags'
+    tags: [init]
+
+  - name: Postfix drop
+    block: 
+    - debug: msg="postfix drop"
+      when:
+        - '"debug" in ansible_run_tags'
+    tags: [drop]
+
+
+  - name: Tests
+    block: 
+    - debug: msg="{{ hostvars }}"
+    - debug: msg="{{inventory_hostname}}"
+    - debug: msg="{{ user }}"
+    tags: [test]
+
+
+
+  # - name: Install Nginx
+  #   apt: 
+  #     update_cache: yes
+  #     name: nginx
+  #     state: present
+
+  # - name: nginx systemd
+  #   systemd:
+  #     name: nginx
+  #     enabled: yes
+  #     state: started    
+
+
+  # - name: Get root directory
+  #   shell: egrep "^[[:blank:]]root" /etc/nginx/sites-enabled/default | awk -F '[\t ;]' '{ print $3 }'
+  #   args:
+  #     warn: no
+  #   register: dir
+    
+  # - name: Store root directory
+  #   set_fact: dir="{{ dir.stdout }}"
+  # - debug: msg="{{ dir }}"
+
+  # - name: copy .my.cnf file with root password credentials
+  #   template: src=templates/index.html dest="{{ dir }}" owner=root mode=0644
