@@ -10,7 +10,7 @@
 
 ### 1 - vault
 
-Пароль от vault храню в файле, что не вводить и вообще о нем не думать.
+Пароль от vault храню в файле, чтобы не вводить и вообще о нем не думать.
 
 `/etc/ansible/ansible.cfg`:
 
@@ -36,10 +36,25 @@
 
 ### 2 - postfix
 
+Запуск:  
+`ansible-playbook -i hosts m23-5.yml -t postfix_init`  
+`ansible-playbook -i hosts m23-5.yml -t postfix_drop[,debug]`  
+
+При установке `postfix` задается ряд вопросов. Использую модуль `debconf` для подготовки и подстановки ответов.
+
+Результат:
+
+    anton@skfubu:~$ telnet localhost 25
+    Trying 127.0.0.1...
+    Connected to localhost.
+    Escape character is '^]'.
+    220 skfubu.pvt.arlab.pw ESMTP Postfix (Ubuntu)
+
+
 ### 3 - tags
 
 Я хочу, чтобы при наличии тега `user` выполнялся соответствующий блок.  
-При наличии тегов `user,debug` должна выводиться дополнительгная отладочная информация в этом блоке
+При наличии тегов `user,debug` должна выводиться дополнительная отладочная информация в этом блоке.
 
 Но тэги по умолчанию работают как "любой".
 

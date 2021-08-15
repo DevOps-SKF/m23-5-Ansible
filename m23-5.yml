@@ -1,12 +1,12 @@
 - hosts: all
   become: yes
   become_method: sudo
-  gather_facts: no
+  gather_facts: yes
 
   tasks:
   - name: User
-    block: 
-    - name: Set timezone 
+    block:
+    - name: Set timezone
       timezone:
         name: Europe/Moscow
 
@@ -21,22 +21,22 @@
 
 
   - name: User
-    block: 
+    block:
     - debug: msg="Creating {{ user }}"
       when:
         - '"debug" in ansible_run_tags'
 
-    - name: Add the user 
+    - name: Add the user
       user:
         name: "{{ user }}"
         shell: /bin/bash
         groups: users
-        append: yes   
-    
-    - name: Ansible create .ssh directory and set permissions    
+        append: yes
+
+    - name: Ansible create .ssh directory and set permissions
       file:
         path: "/home/{{ user }}/.ssh"
-        state: directory      
+        state: directory
         mode: "u=rwx"
 
     - name: Copy file
@@ -45,7 +45,7 @@
         dest: "/home/{{ user }}/.ssh/id_rsa.pub"
         mode: 0600
 
-    - name: Ansible create .ssh directory and set permissions    
+    - name: Ansible create .ssh directory and set permissions
       file:
         path: "/home/{{ user }}/.ssh"
         owner: "{{ user }}"
@@ -54,53 +54,45 @@
 
     tags: user
 
-  
+
   - name: Postfix init
-    block: 
+    block:
     - debug: msg="postfix init"
       when:
         - '"debug" in ansible_run_tags'
-    tags: [init]
+
+    - name: Set Postfix option type as internet site
+      debconf:
+        name=postfix
+        question="postfix/main_mailer_type"
+        value="'Internet Site'"
+        vtype="string"
+
+    - name: Set Postfix option hostname
+      debconf:
+        name=postifx
+        question="postfix/mailname"
+        value="{{ ansible_facts.hostname }}"
+        vtype="string"
+
+    - name: install postfix
+      apt: name=postfix state=present
+    tags: [postfix_init]
 
   - name: Postfix drop
-    block: 
+    block:
     - debug: msg="postfix drop"
       when:
         - '"debug" in ansible_run_tags'
-    tags: [drop]
+    - name: uninstall postfix
+      apt: name=postfix state=absent purge=yes autoremove=yes
+    tags: [postfix_drop]
 
 
   - name: Tests
-    block: 
-    - debug: msg="{{ hostvars }}"
-    - debug: msg="{{inventory_hostname}}"
-    - debug: msg="{{ user }}"
+    block:
+    - debug: msg="{{ ansible_facts.hostname }}"
+    # - debug: msg="{{ hostvars }}"
+    # - debug: msg="{{inventory_hostname}}"
+    # - debug: msg="{{ user }}"
     tags: [test]
-
-
-
-  # - name: Install Nginx
-  #   apt: 
-  #     update_cache: yes
-  #     name: nginx
-  #     state: present
-
-  # - name: nginx systemd
-  #   systemd:
-  #     name: nginx
-  #     enabled: yes
-  #     state: started    
-
-
-  # - name: Get root directory
-  #   shell: egrep "^[[:blank:]]root" /etc/nginx/sites-enabled/default | awk -F '[\t ;]' '{ print $3 }'
-  #   args:
-  #     warn: no
-  #   register: dir
-    
-  # - name: Store root directory
-  #   set_fact: dir="{{ dir.stdout }}"
-  # - debug: msg="{{ dir }}"
-
-  # - name: copy .my.cnf file with root password credentials
-  #   template: src=templates/index.html dest="{{ dir }}" owner=root mode=0644
